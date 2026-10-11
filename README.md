@@ -2,6 +2,10 @@
 
 口袋酒馆是一个 Android 客户端,把 [SillyTavern](https://github.com/SillyTavern/SillyTavern)(酒馆)1.19.0 直接跑在手机上。
 
+> **本项目不是 SillyTavern(酒馆)官方项目**,与 SillyTavern 团队没有隶属或背书关系。
+> 两者的关系可以类比为 Linux 内核与 Android 发行版:酒馆是上游内核,口袋酒馆是基于它做的第三方发行版,负责 Android 上的运行环境、界面和打包。
+> 问题请先在本仓库反馈,不要直接去打扰官方渠道。
+
 - 应用内启动一个本地 Node.js 进程运行酒馆服务,WebView 加载 `127.0.0.1` 上的页面,不需要电脑或外部服务器。
 - 酒馆数据保存在应用私有目录,升级内核不会丢失聊天和角色。
 - 支持 Android 8.0(API 26)及以上,仅 arm64-v8a 设备。
@@ -24,7 +28,7 @@
 
 Node 运行时的 `.so` 依赖来自 [Termux 软件包仓库](https://github.com/termux/termux-packages),构建脚本 `scripts/fetch-node-runtime.sh` 会校验每个包的 SHA256。
 
-> 注意:以上组件的完整许可证文本随 APK 分发的工作尚未完成,发布前需要补齐。
+所有组件的许可证文本都收录在 [`licenses/`](licenses/README.md) 目录中,按组件分目录存放,构建时随 APK 一起打包(应用内 `assets/licenses/`)。
 
 ## 许可证
 

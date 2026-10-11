@@ -14,6 +14,12 @@ val signingProps = rootProject.file("signing/signing.properties")
 val nodeRuntimeJniLibs = layout.buildDirectory.dir("node-runtime/jniLibs").get().asFile
 val generatedAssets = layout.buildDirectory.dir("generated-assets").get().asFile
 
+// ---- 第三方许可证:licenses/ 原样复制到 APK 的 assets/licenses/ ----
+val stageLicenses by tasks.registering(Copy::class) {
+    from(rootProject.file("licenses"))
+    into(layout.buildDirectory.dir("generated-licenses/licenses"))
+}
+
 val fetchNodeRuntime by tasks.registering(Exec::class) {
     val script = rootProject.file("scripts/fetch-node-runtime.sh")
     inputs.file(script)
@@ -45,6 +51,7 @@ android {
         getByName("main") {
             jniLibs.srcDir(nodeRuntimeJniLibs)
             assets.srcDir(generatedAssets)
+            assets.srcDir(layout.buildDirectory.dir("generated-licenses"))
         }
     }
 
@@ -91,4 +98,4 @@ tasks.matching {
     it.name == "preBuild" ||
         (it.name.startsWith("merge") && (it.name.endsWith("JniLibFolders") || it.name.endsWith("Assets")))
 }
-    .configureEach { dependsOn(fetchNodeRuntime, prepareKernel) }
+    .configureEach { dependsOn(fetchNodeRuntime, prepareKernel, stageLicenses) }

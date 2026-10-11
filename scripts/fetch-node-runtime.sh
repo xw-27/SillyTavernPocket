@@ -14,7 +14,8 @@ DEST="${1:?用法: $0 <输出目录>}"
 command -v patchelf >/dev/null || { echo "需要 patchelf(pacman -S patchelf)" >&2; exit 1; }
 REPO="${TERMUX_REPO:-https://packages.termux.dev/apt/termux-main}"
 PKG_ROOT="${PKG_ROOT:-$HOME/.cache/sillytavernpocket/termux}"
-TOP_PKG="${TOP_PKG:-nodejs-lts}"
+# 顶层包:运行时本体 + 提供许可证正文的 termux-licenses(各包的 copyright 文件是指向它的符号链接)
+TOP_PKGS="${TOP_PKGS:-nodejs-lts termux-licenses}"
 PREFIX_REL="data/data/com.termux/files/usr"
 
 mkdir -p "$PKG_ROOT/debs" "$PKG_ROOT/root"
@@ -22,9 +23,9 @@ INDEX="$PKG_ROOT/Packages.gz"
 [ -f "$INDEX" ] || curl -fsSL -o "$INDEX" "$REPO/dists/stable/main/binary-aarch64/Packages.gz"
 
 # 解析依赖闭包,输出: 包名 版本 文件名 SHA256
-python3 - "$INDEX" "$TOP_PKG" > "$PKG_ROOT/closure.txt" <<'PY'
+python3 - "$INDEX" $TOP_PKGS > "$PKG_ROOT/closure.txt" <<'PY'
 import gzip, sys
-index, top = sys.argv[1], sys.argv[2]
+index, tops = sys.argv[1], sys.argv[2:]
 pkgs = {}
 for block in gzip.open(index, "rt").read().split("\n\n"):
     d = {}
@@ -34,7 +35,7 @@ for block in gzip.open(index, "rt").read().split("\n\n"):
             d.setdefault(k, v)
     if "Package" in d:
         pkgs.setdefault(d["Package"], d)
-seen, queue = [], [top]
+seen, queue = [], list(tops)
 while queue:
     name = queue.pop(0)
     if name in seen:
