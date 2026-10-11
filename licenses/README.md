@@ -9,7 +9,7 @@
 | `nodejs/` | Node.js 运行时,含其内置依赖(各依赖的许可证详见文本) | nodejs-lts 24.18.0 | MIT 及各内置依赖许可证 | Termux 包 `nodejs-lts` 的 copyright 文件 |
 | `openssl/` | OpenSSL | 3.6.5 | Apache-2.0 | Termux `termux-licenses` 中的 Apache-2.0 文本 |
 | `icu/` | ICU(国际化库) | 78.3 | Unicode License V3 | 上游 unicode-org/icu 的 `release-78.3` 标签 |
-| `libcxx/` | libc++(C++ 标准库) | 30 | NCSA(Termux 包元数据标注) | Termux `termux-licenses` 中的 NCSA 文本 |
+| `libcxx/` | libc++(C++ 标准库) | 30 | Apache-2.0 WITH LLVM-exception | LLVM 上游 `libcxx/LICENSE.TXT` |
 | `c-ares/` | c-ares(异步 DNS) | 1.34.8 | MIT | Termux 包 `c-ares` 的 copyright 文件 |
 | `zlib/` | zlib | 1.3.2 | zlib License | Termux 包 `zlib` 的 copyright 文件 |
 | `sqlite/` | SQLite | 3.54.0 | 公有领域 | Termux `termux-licenses` 中的 CC0 1.0 文本(Termux 将 Public Domain 映射到此) |
@@ -19,5 +19,5 @@
 ## 说明
 
 - **npm 依赖**:酒馆的生产依赖(约 667 个包)随 `kernel/node_modules/` 一并分发,每个包自带的 LICENSE 文件都保留在 APK 中。
-- **已知待核对项**:`libcxx/` 的 NCSA 文本中仍有 `[year] [fullname]` 占位符,版权人信息需要以 LLVM 上游为准。
+- **更正记录**:libc++ 最初按 Termux 元数据收录为 NCSA,经核对上游 LLVM 为 Apache-2.0 with LLVM-exception,已替换为上游文本。
 - **更新方式**:组件版本升级时,同步更新本表和对应目录的文本。
