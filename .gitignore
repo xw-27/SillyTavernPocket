@@ -33,3 +33,9 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# 本地文档(不上传 GitHub)
+docs/
+
+# 发布签名:keystore 与密码,绝不提交
+signing/

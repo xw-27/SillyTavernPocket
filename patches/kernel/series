@@ -1,0 +1,1 @@
+# 内核补丁应用顺序,每行一个 .patch 文件名(相对于 patches/kernel/)
