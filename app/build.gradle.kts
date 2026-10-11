@@ -37,8 +37,8 @@ android {
         applicationId = "com.xw.sillytavernpocket"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.0.2"
+        versionCode = 3
+        versionName = "0.0.3"
         ndk { abiFilters += "arm64-v8a" }
     }
 
