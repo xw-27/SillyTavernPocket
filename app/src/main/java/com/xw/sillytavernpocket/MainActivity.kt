@@ -1,88 +1,40 @@
 package com.xw.sillytavernpocket
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
-import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
-import android.view.View
-import android.view.ViewGroup
-import android.view.WindowInsets
-import android.widget.FrameLayout
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.ScrollView
-import android.widget.TextView
+import com.xw.sillytavernpocket.ui.ShellUi
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.concurrent.thread
 
 /**
- * 开机页:以 systemd 风格显示启动阶段与进度,服务就绪后切换到酒馆 WebView。
+ * 应用入口。只负责生命周期、系统权限和服务启动;所有界面操作都在 [ShellUi] 中完成。
  */
 class MainActivity : Activity() {
 
-    private lateinit var container: FrameLayout
-    private lateinit var root: LinearLayout
-    private lateinit var stageText: TextView
-    private lateinit var logText: TextView
-    private lateinit var logScroll: ScrollView
-    private lateinit var progressBar: ProgressBar
-    private var webView: WebView? = null
-    private val refresh: () -> Unit = { render() }
+    private lateinit var ui: ShellUi
 
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            visibility = View.GONE
-        }
-        stageText = TextView(this).apply {
-            typeface = Typeface.MONOSPACE
-            textSize = 13f
-            setTextColor(Color.rgb(0xCC, 0xCC, 0xCC))
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-        }
-        logText = TextView(this).apply {
-            typeface = Typeface.MONOSPACE
-            textSize = 11f
-            setTextColor(Color.rgb(0x88, 0x88, 0x88))
-            setPadding(dp(16), dp(8), dp(16), dp(16))
-        }
-        logScroll = ScrollView(this).apply { addView(logText) }
-        root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.BLACK)
-            addView(progressBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(4)))
-            addView(stageText, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            addView(logScroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        }
-        // targetSdk 36 为 edge-to-edge:内容会画到状态栏、刘海、导航栏和键盘下面,这里统一留出内边距
-        container = FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
-            applySafeAreaPadding()
-            addView(root, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        }
-        setContentView(container)
+        ui = ShellUi(this)
+        setContentView(ui.root)
+        ui.showBoot()
 
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
         }
-        BootLog.addListener(refresh)
-        render()
+        try {
+            PluginInstaller.install(this)
+        } catch (e: Exception) {
+            BootLog.log("桥接插件安装失败:${e.message}")
+        }
         startForegroundService(Intent(this, NodeService::class.java))
         requestBatteryExemptionOnce()
 
@@ -91,9 +43,17 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        // 切回前台时恢复 WebView 的定时器与渲染。只恢复、不暂停:后台生成需要 JS 继续处理数据流
-        webView?.onResume()
-        webView?.resumeTimers()
+        ui.onResume()
+    }
+
+    override fun onDestroy() {
+        ui.onDestroy()
+        super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (!ui.onBackPressed()) super.onBackPressed()
     }
 
     /** 首次启动时请求加入电池优化白名单,避免国产系统在后台冻结或杀死服务。只提示一次。 */
@@ -113,11 +73,6 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onDestroy() {
-        BootLog.removeListener(refresh)
-        super.onDestroy()
-    }
-
     private fun waitUntilReady() {
         val deadline = System.currentTimeMillis() + WAIT_TIMEOUT_MS
         // 先等服务选定端口,再等 HTTP 服务应答
@@ -133,52 +88,7 @@ class MainActivity : Activity() {
         }
         BootLog.endStage(BootLog.STAGE_READY, true)
         Thread.sleep(600) // 让用户看到最后的 [  OK  ]
-        runOnUiThread { showWebView(url) }
-    }
-
-    private fun showWebView(url: String) {
-        BootLog.removeListener(refresh)
-        val view = WebView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            webViewClient = WebViewClient()
-        }
-        webView = view
-        container.removeAllViews()
-        container.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        view.loadUrl(url)
-    }
-
-    @SuppressLint("SetTextI18n")
-    private fun render() {
-        val (stages, lines, progress) = BootLog.snapshot()
-        val sb = SpannableStringBuilder()
-        for (s in stages) {
-            val (tag, color) = when (s.state) {
-                BootLog.State.OK -> "[  OK  ]" to Color.rgb(0x55, 0xFF, 0x55)
-                BootLog.State.RUNNING -> "[ .... ]" to Color.rgb(0xFF, 0xD7, 0x5F)
-                BootLog.State.FAILED -> "[FAILED]" to Color.rgb(0xFF, 0x55, 0x55)
-            }
-            val start = sb.length
-            sb.append(tag)
-            sb.setSpan(ForegroundColorSpan(color), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.append(" ").append(s.label())
-            if (s.state != BootLog.State.RUNNING) {
-                sb.append("  用时 %.1f 秒".format(s.elapsedMs / 1000.0))
-            }
-            sb.append("\n")
-        }
-        stageText.text = sb
-        logText.text = lines.joinToString("\n")
-
-        if (progress in 0..100) {
-            progressBar.visibility = View.VISIBLE
-            progressBar.progress = progress
-        } else {
-            progressBar.visibility = View.GONE
-        }
-        logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+        runOnUiThread { ui.showShell(url) }
     }
 
     private fun waitForServer(url: String, deadline: Long): Boolean {
@@ -196,27 +106,6 @@ class MainActivity : Activity() {
             Thread.sleep(1_000)
         }
         return false
-    }
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
-    /** 按系统栏、刘海和键盘高度设置内边距;低版本回退到 fitsSystemWindows。 */
-    private fun View.applySafeAreaPadding() {
-        if (Build.VERSION.SDK_INT >= 30) {
-            setOnApplyWindowInsetsListener { v, insets ->
-                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
-                val ime = insets.getInsets(WindowInsets.Type.ime())
-                v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
-                insets
-            }
-        } else {
-            fitsSystemWindows = true
-        }
-    }
-
-    override fun onBackPressed() {
-        val view = webView
-        if (view != null && view.canGoBack()) view.goBack() else super.onBackPressed()
     }
 
     companion object {

@@ -1,0 +1,24 @@
+/*
+ * 口袋酒馆桥接插件的样式。
+ *
+ * 规则都限定在 body.pocket-shell 之下,普通浏览器中的酒馆不受影响。
+ * 只用 display / 高度做隐藏,不删除任何元素:面板仍在 DOM 中,由原生抽屉菜单点击打开。
+ */
+
+/* 原生外壳已经提供顶部栏,酒馆内部不再保留顶部栏的占位 */
+body.pocket-shell {
+    --topBarBlockSize: 0px;
+}
+
+body.pocket-shell #top-bar {
+    display: none;
+}
+
+/* 酒馆顶部的按钮栏已由原生抽屉菜单代替:隐藏按钮图标,收起占用的高度 */
+body.pocket-shell #top-settings-holder {
+    height: 0;
+}
+
+body.pocket-shell #top-settings-holder .drawer-toggle {
+    display: none;
+}

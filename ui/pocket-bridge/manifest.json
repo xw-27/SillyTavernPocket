@@ -1,0 +1,12 @@
+{
+  "display_name": "口袋酒馆桥接",
+  "loading_order": 100,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "xw-27",
+  "version": "0.1.0",
+  "homePage": "https://github.com/xw-27/SillyTavernPocket",
+  "auto_update": false
+}

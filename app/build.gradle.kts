@@ -20,6 +20,11 @@ val stageLicenses by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("generated-licenses/licenses"))
 }
 
+val stagePocketBridge by tasks.registering(Copy::class) {
+    from(rootProject.file("ui/pocket-bridge"))
+    into(layout.buildDirectory.dir("generated-ui/pocket-bridge"))
+}
+
 val fetchNodeRuntime by tasks.registering(Exec::class) {
     val script = rootProject.file("scripts/fetch-node-runtime.sh")
     inputs.file(script)
@@ -52,6 +57,7 @@ android {
             jniLibs.srcDir(nodeRuntimeJniLibs)
             assets.srcDir(generatedAssets)
             assets.srcDir(layout.buildDirectory.dir("generated-licenses"))
+            assets.srcDir(layout.buildDirectory.dir("generated-ui"))
         }
     }
 
@@ -98,4 +104,4 @@ tasks.matching {
     it.name == "preBuild" ||
         (it.name.startsWith("merge") && (it.name.endsWith("JniLibFolders") || it.name.endsWith("Assets")))
 }
-    .configureEach { dependsOn(fetchNodeRuntime, prepareKernel, stageLicenses) }
+    .configureEach { dependsOn(fetchNodeRuntime, prepareKernel, stageLicenses, stagePocketBridge) }
